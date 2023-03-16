@@ -19,7 +19,7 @@ public class UIManager : MonoBehaviour
 
     private GameManager gameManager;
     private float elapsedTime;
-    private const int GET_READY_TIME = 0;
+    private const int GET_READY_TIME = 5;
 
     private void Awake()
     {

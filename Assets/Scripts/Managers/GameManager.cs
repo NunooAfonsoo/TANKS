@@ -54,7 +54,7 @@ public class GameManager : MonoBehaviour
         OnCactusDestroyed.Invoke(this, new OnCactusDestroyedArgs(cactiDestroyed));
         NumberOfActiveCacti--;
 
-        if (cactiDestroyed == 2)
+        if (cactiDestroyed == 20)
         {
             CurrentGameState = GameState.GameEnd;
             OnGameWon.Invoke(this, EventArgs.Empty);

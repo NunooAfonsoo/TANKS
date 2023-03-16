@@ -20,7 +20,6 @@ public class CactusSpawner : MonoBehaviour, ISpawner
         InvokeRepeating(nameof(CanSpawn), Random.Range(0f, 5f), Random.Range(3f, 10f));
     }
 
-
     public void Spawn()
     {
         if(gameManager.CanSpawnCactus())

@@ -2563,7 +2563,7 @@ GameObject:
   m_Component:
   - component: {fileID: 669348581}
   m_Layer: 0
-  m_Name: CactiSpawners
+  m_Name: CactusSpawners
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3190,7 +3190,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 757810384}
   m_LocalRotation: {x: 0.28978416, y: 0.000000023289399, z: -0.0000000070514616, w: 0.95709205}
-  m_LocalPosition: {x: 3.8645573, y: 13.852661, z: -65.915016}
+  m_LocalPosition: {x: 12.134558, y: 13.852661, z: -64.375015}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -8690,7 +8690,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2136397628}
   m_LocalRotation: {x: 0.28978416, y: 0.000000023289399, z: -0.0000000070514616, w: 0.95709205}
-  m_LocalPosition: {x: 3.8645573, y: 13.852661, z: -65.915016}
+  m_LocalPosition: {x: 12.134558, y: 13.852661, z: -64.375015}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -8856,7 +8856,7 @@ PrefabInstance:
     - target: {fileID: 928227580435358709, guid: 4456b8cf1d10a9e4bbcdc1be0df9bb82,
         type: 3}
       propertyPath: m_LocalPosition.x
-      value: -8.27
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 928227580435358709, guid: 4456b8cf1d10a9e4bbcdc1be0df9bb82,
         type: 3}
@@ -8866,7 +8866,7 @@ PrefabInstance:
     - target: {fileID: 928227580435358709, guid: 4456b8cf1d10a9e4bbcdc1be0df9bb82,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: -1.54
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 928227580435358709, guid: 4456b8cf1d10a9e4bbcdc1be0df9bb82,
         type: 3}

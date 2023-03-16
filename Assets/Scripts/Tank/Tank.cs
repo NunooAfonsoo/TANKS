@@ -28,13 +28,13 @@ public class Tank : MonoBehaviour, IShootable, IDamageReceiver, IPowerUpReceiver
 
         moveSpeed = defaultMoveSpeed;
         currentAmmunition = 10;
-        UIManager.Instance.UpdateAmmoUI(currentAmmunition);
         shieldAmount = 0;
     }
 
     private void Start()
     {
         inputManager = InputManager.Instance;
+        UIManager.Instance.UpdateAmmoUI(currentAmmunition);
 
         inputManager.OnCannonShot += InputManager_OnCannonShot;
     }

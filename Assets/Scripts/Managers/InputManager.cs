@@ -10,7 +10,9 @@ public class InputManager : MonoBehaviour
 
     private Controls controls;
     private const float MAX_MOUSE_DISTANCE = 1000f;
+
     public event EventHandler OnCannonShot;
+    public event EventHandler OnPausePerformed;
 
     private void Awake()
     {
@@ -22,21 +24,24 @@ public class InputManager : MonoBehaviour
     private void OnEnable()
     {
         controls.Tank.Shoot.performed += ShootCannon;
+        controls.Pause.Pause.performed += PauseGame;
         EnableControls();
     }
 
     private void OnDisable()
     {
         controls.Tank.Shoot.performed -= ShootCannon;
-        DisableControls();
+        controls.Pause.Pause.performed -= PauseGame;
+        DisableTankControls();
     }
 
-    private void EnableControls()
+    public void EnableControls()
     {
         controls.Tank.Enable();
+        controls.Pause.Enable();
     }
 
-    public void DisableControls()
+    public void DisableTankControls()
     {
         controls.Tank.Disable();
     }
@@ -46,16 +51,24 @@ public class InputManager : MonoBehaviour
         OnCannonShot?.Invoke(this, EventArgs.Empty);
     }
 
+    private void PauseGame(InputAction.CallbackContext obj)
+    {
+        DisableTankControls();
+        OnPausePerformed?.Invoke(this, EventArgs.Empty);
+    }
+
     public float GetMovementDirection()
     {
         Vector2 input = controls.Tank.Move.ReadValue<Vector2>();
         return input.x + input.y;
     }
+
     public float GetTankRotationDirection()
     {
         Vector2 input = controls.Tank.Rotate.ReadValue<Vector2>();
         return input.x - input.y;
     }
+
     public Vector3 GetMouseWorldPosition()
     {
         Ray ray = Camera.main.ScreenPointToRay(new Vector3(Mouse.current.position.x.ReadValue(), Mouse.current.position.y.ReadValue()));

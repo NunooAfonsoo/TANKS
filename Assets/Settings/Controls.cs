@@ -134,6 +134,34 @@ public partial class @Controls : IInputActionCollection2, IDisposable
                     ""isPartOfComposite"": false
                 }
             ]
+        },
+        {
+            ""name"": ""Pause"",
+            ""id"": ""d558ae94-214a-4b96-a139-7d764c754a69"",
+            ""actions"": [
+                {
+                    ""name"": ""Pause"",
+                    ""type"": ""Button"",
+                    ""id"": ""6bcec7de-fc94-4261-bff2-37d6d0ca8e36"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                }
+            ],
+            ""bindings"": [
+                {
+                    ""name"": """",
+                    ""id"": ""1b31156e-61f2-4caa-8a29-138b573f8172"",
+                    ""path"": ""<Keyboard>/escape"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Pause"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                }
+            ]
         }
     ],
     ""controlSchemes"": []
@@ -143,6 +171,9 @@ public partial class @Controls : IInputActionCollection2, IDisposable
         m_Tank_Move = m_Tank.FindAction("Move", throwIfNotFound: true);
         m_Tank_Rotate = m_Tank.FindAction("Rotate", throwIfNotFound: true);
         m_Tank_Shoot = m_Tank.FindAction("Shoot", throwIfNotFound: true);
+        // Pause
+        m_Pause = asset.FindActionMap("Pause", throwIfNotFound: true);
+        m_Pause_Pause = m_Pause.FindAction("Pause", throwIfNotFound: true);
     }
 
     public void Dispose()
@@ -247,10 +278,47 @@ public partial class @Controls : IInputActionCollection2, IDisposable
         }
     }
     public TankActions @Tank => new TankActions(this);
+
+    // Pause
+    private readonly InputActionMap m_Pause;
+    private IPauseActions m_PauseActionsCallbackInterface;
+    private readonly InputAction m_Pause_Pause;
+    public struct PauseActions
+    {
+        private @Controls m_Wrapper;
+        public PauseActions(@Controls wrapper) { m_Wrapper = wrapper; }
+        public InputAction @Pause => m_Wrapper.m_Pause_Pause;
+        public InputActionMap Get() { return m_Wrapper.m_Pause; }
+        public void Enable() { Get().Enable(); }
+        public void Disable() { Get().Disable(); }
+        public bool enabled => Get().enabled;
+        public static implicit operator InputActionMap(PauseActions set) { return set.Get(); }
+        public void SetCallbacks(IPauseActions instance)
+        {
+            if (m_Wrapper.m_PauseActionsCallbackInterface != null)
+            {
+                @Pause.started -= m_Wrapper.m_PauseActionsCallbackInterface.OnPause;
+                @Pause.performed -= m_Wrapper.m_PauseActionsCallbackInterface.OnPause;
+                @Pause.canceled -= m_Wrapper.m_PauseActionsCallbackInterface.OnPause;
+            }
+            m_Wrapper.m_PauseActionsCallbackInterface = instance;
+            if (instance != null)
+            {
+                @Pause.started += instance.OnPause;
+                @Pause.performed += instance.OnPause;
+                @Pause.canceled += instance.OnPause;
+            }
+        }
+    }
+    public PauseActions @Pause => new PauseActions(this);
     public interface ITankActions
     {
         void OnMove(InputAction.CallbackContext context);
         void OnRotate(InputAction.CallbackContext context);
         void OnShoot(InputAction.CallbackContext context);
+    }
+    public interface IPauseActions
+    {
+        void OnPause(InputAction.CallbackContext context);
     }
 }

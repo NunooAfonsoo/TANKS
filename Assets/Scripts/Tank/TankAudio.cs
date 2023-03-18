@@ -1,6 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class TankAudio : MonoBehaviour
@@ -8,35 +6,41 @@ public class TankAudio : MonoBehaviour
     [SerializeField] private AudioClip cannonShotAudio;
     [SerializeField] private AudioClip tankDestroyedAudio;
     
-    private AudioSource tankAudioSource;
     private Tank tank;
+    private TankFiring tankFiring;
+
+    private AudioSource tankAudioSource;
 
     private void Awake()
     {
         tankAudioSource = GetComponent<AudioSource>();
+
         tank = GetComponent<Tank>();
+        tankFiring = GetComponent<TankFiring>();
     }
     private void Start()
     {
-        InputManager.Instance.OnCannonShot += InputManager_OnCannonShot;
         tank.OnTankDestroyed += Tank_OnTankDestroyed;
+        tankFiring.OnCannonShot += TankFiring_OnCannonShot;
     }
     private void OnDisable()
     {
-        InputManager.Instance.OnCannonShot -= InputManager_OnCannonShot;
         tank.OnTankDestroyed -= Tank_OnTankDestroyed;
-
-    }
-
-    private void InputManager_OnCannonShot(object sender, EventArgs e)
-    {
-        tankAudioSource.clip = cannonShotAudio;
-        tankAudioSource.Play();
+        tankFiring.OnCannonShot -= TankFiring_OnCannonShot;
     }
 
     private void Tank_OnTankDestroyed(object sender, EventArgs e)
     {
         tankAudioSource.clip = tankDestroyedAudio;
         tankAudioSource.Play();
+    }
+
+    private void TankFiring_OnCannonShot(object sender, EventArgs e)
+    {
+        if(GameManager.Instance.CurrentGameState == GameStates.OnGoing)
+        {
+            tankAudioSource.clip = cannonShotAudio;
+            tankAudioSource.Play();
+        }
     }
 }

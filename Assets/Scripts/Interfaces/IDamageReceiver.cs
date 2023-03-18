@@ -1,4 +1,5 @@
 public interface IDamageReceiver
 {
-    public void TakeDamage();
+    public void TakeDamage(bool isFromHost);
+    public bool IsServer();
 }

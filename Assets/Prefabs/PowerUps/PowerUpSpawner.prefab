@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3213917838910791393}
   - component: {fileID: 3213917838910791392}
+  - component: {fileID: -5238040053673449852}
   m_Layer: 0
   m_Name: PowerUpSpawner
   m_TagString: Untagged
@@ -50,6 +51,22 @@ MonoBehaviour:
   - {fileID: 289710587834547352, guid: 130543505e26317419f8f7956a383354, type: 3}
   - {fileID: 1407925303577769212, guid: af0c78495984d3846aff50582c28ba82, type: 3}
   - {fileID: 1682027074907927231, guid: d42f8124bba454a45ad2f6eb7911c947, type: 3}
+--- !u!114 &-5238040053673449852
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3213917838910791395}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  GlobalObjectIdHash: 951099334
+  AlwaysReplicateAsRoot: 0
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
 --- !u!1 &3213917839061036082
 GameObject:
   m_ObjectHideFlags: 0

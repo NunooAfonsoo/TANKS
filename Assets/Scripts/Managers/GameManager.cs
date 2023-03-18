@@ -1,69 +1,151 @@
 using System;
+using System.Collections.Generic;
+using Unity.Netcode;
 using UnityEngine;
 
-public class GameManager : MonoBehaviour
+public class GameManager : NetworkBehaviour
 {
     public static GameManager Instance;
 
-    public const int MAX_NUMBER_OF_CACTI = 5;
-    public int NumberOfActiveCacti { get; private set; }
-
-    private int cactiDestroyed;
-    public enum GameState
+    [SerializeField] private bool isMultiplayer;
+    public bool IsMultiplayer
     {
-        Starting,
-        OnGoing,
-        GameEnd
+        get { return isMultiplayer; }
     }
-    public GameState CurrentGameState { get; private set; }
+    [SerializeField] private List<Transform> spawnPoints;
+    public List<Transform> SpawnPoints
+    {
+        get { return spawnPoints; }
+    }
 
-    public event EventHandler OnGameWon;
+    public GameStates CurrentGameState { get; private set; }
+
+    public event EventHandler OnGameStartCountdownStarted;
     public event EventHandler OnGameCountdownEnded;
-    public event EventHandler<OnCactusDestroyedArgs> OnCactusDestroyed;
-    public class OnCactusDestroyedArgs : EventArgs
-    {
-        public int score;
-        public OnCactusDestroyedArgs(int score)
-        {
-            this.score = score;
-        }
-    }
+    public event EventHandler OnInterval;
+    public event EventHandler OnIntervalEnded;
+    public event EventHandler OnGameWon;
+    public event EventHandler OnGameLost;
 
     private void Awake()
     {
         Instance = this;
-
-        CurrentGameState = GameState.Starting;
-        cactiDestroyed = 0;
-        NumberOfActiveCacti = 0;
     }
 
-    internal bool CanSpawnCactus()
+    private void Start()
     {
-        return NumberOfActiveCacti < MAX_NUMBER_OF_CACTI;
-    }
-
-    public void CactusSpawned()
-    {
-        NumberOfActiveCacti++;
-    }
-
-    public void CactusDestroyed()
-    {
-        cactiDestroyed ++;
-        OnCactusDestroyed.Invoke(this, new OnCactusDestroyedArgs(cactiDestroyed));
-        NumberOfActiveCacti--;
-
-        if (cactiDestroyed == 20)
+        if (isMultiplayer)
         {
-            CurrentGameState = GameState.GameEnd;
-            OnGameWon.Invoke(this, EventArgs.Empty);
+            CurrentGameState = GameStates.ChoosingNetworkStatus;
         }
+        else
+        {
+            NetworkManager.Singleton.StartHost();
+            CurrentGameState = GameStates.Starting;
+        }
+
+        InputManager.Instance.OnPausePerformed += InputManager_OnPausePerformed;
+    }
+
+    public void NetworkStatusChosen()
+    {
+        if (!IsServer)
+        {
+            Invoke(nameof(NetworkStatusChosenServerRpc), 1);
+        }
+    }
+
+    public Vector3 GetRandomSpawnPoint()
+    {
+        int index = UnityEngine.Random.Range(0, spawnPoints.Count);
+        Vector3 spawnPoint = spawnPoints[index].position;
+        spawnPoints.RemoveAt(index);
+
+        return spawnPoint;
     }
 
     public void StartCountdownEnded()
     {
-        CurrentGameState = GameState.OnGoing;
+        if (IsServer)
+        {
+            StartCountdownEndedServerRpc();
+        }
+    }
+
+    public void Interval()
+    {
+        CurrentGameState = GameStates.Interval;
+        OnInterval?.Invoke(this, EventArgs.Empty);
+    }
+    
+    public void IntervalEnded()
+    {
+        if (IsServer)
+        {
+            IntervalEndedServerRpc();
+        }
+    }
+
+    public void GameWon()
+    {
+        CurrentGameState = GameStates.GameEnd;
+        OnGameWon.Invoke(this, EventArgs.Empty);
+    }
+
+    public void GameLost()
+    {
+        CurrentGameState = GameStates.GameEnd;
+        OnGameLost.Invoke(this, EventArgs.Empty);
+    }
+
+    public void ResumeGame()
+    {
+        Time.timeScale = 1;
+        InputManager.Instance.EnableControls();
+    }
+
+    private void InputManager_OnPausePerformed(object sender, EventArgs e)
+    {
+        if (!isMultiplayer)
+        {
+            Time.timeScale = 0;
+        }
+    }
+
+    #region RpcCalls
+
+    [ServerRpc]
+    private void StartCountdownEndedServerRpc()
+    {
+        StartCountdownEndedClientRpc();
+    }
+
+    [ClientRpc]
+    private void StartCountdownEndedClientRpc()
+    {
+        CurrentGameState = GameStates.OnGoing;
         OnGameCountdownEnded.Invoke(this, EventArgs.Empty);
     }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void NetworkStatusChosenServerRpc()
+    {
+        CurrentGameState = GameStates.Starting;
+        OnGameStartCountdownStarted?.Invoke(this, EventArgs.Empty);
+    }
+
+    [ServerRpc]
+    private void IntervalEndedServerRpc()
+    {
+        IntervalEndedClientRpc();
+    }
+
+    [ClientRpc]
+    private void IntervalEndedClientRpc()
+    {
+        CurrentGameState = GameStates.OnGoing;
+        OnIntervalEnded?.Invoke(this, EventArgs.Empty);
+    }
+
+    #endregion
 }

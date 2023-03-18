@@ -1,11 +1,13 @@
 using System.Collections.Generic;
+using Unity.Netcode;
 using UnityEngine;
 
-public class PowerUpSpawner : MonoBehaviour, ISpawner
+public class PowerUpSpawner : NetworkBehaviour, ISpawner
 {
     [SerializeField] private Transform SpawnPosition;
     [SerializeField] private List<GameObject> powerUpPrefabs;
-    private const float SPAWN_INTERVAL = 5;
+
+    private const float MAX_SPAWN_INTERVAL = 5f;
 
     private void Start()
     {
@@ -14,20 +16,45 @@ public class PowerUpSpawner : MonoBehaviour, ISpawner
 
     private void GameManager_OnGameCountdownEnded(object sender, System.EventArgs e)
     {
-        InvokeRepeating(nameof(Spawn), Random.Range(0f, 5f), SPAWN_INTERVAL);
+        Invoke(nameof(Spawn), MAX_SPAWN_INTERVAL);
     }
 
     public void Spawn()
     {
-        CancelInvoke(nameof(Spawn));
-
-        int prefabIndex = Random.Range(0, powerUpPrefabs.Count);
-        ISpawnable powerUp = Instantiate(powerUpPrefabs[prefabIndex], SpawnPosition.position, Quaternion.identity, SpawnPosition).GetComponent<ISpawnable>();
-        powerUp.SetSpawner(this);
+        if (IsServer)
+        {
+            SpawnPowerUpServerRpc();
+        }
     }
 
     public void CanSpawn()
     {
-        InvokeRepeating(nameof(Spawn), Random.Range(2f, 7f), SPAWN_INTERVAL);
+        Invoke(nameof(Spawn), MAX_SPAWN_INTERVAL);
     }
+
+    #region RpcCalls
+
+    [ServerRpc]
+    public void SpawnPowerUpServerRpc()
+    {
+        CancelInvoke(nameof(Spawn));
+
+        int prefabIndex = Random.Range(0, powerUpPrefabs.Count);
+        GameObject powerUp = Instantiate(powerUpPrefabs[prefabIndex], SpawnPosition.position, Quaternion.identity, SpawnPosition);
+
+        powerUp.GetComponent<NetworkObject>().Spawn(true);
+        
+        SpawnPowerUpClientRpc(powerUp.GetComponent<NetworkObject>());
+    }
+
+    [ClientRpc]
+    public void SpawnPowerUpClientRpc(NetworkObjectReference networkObjectReference)
+    {
+        networkObjectReference.TryGet(out NetworkObject networkObject);
+        ISpawnable spawnable = networkObject.GetComponent<ISpawnable>();
+
+        spawnable.SetSpawner(this);
+    }
+
+    #endregion
 }

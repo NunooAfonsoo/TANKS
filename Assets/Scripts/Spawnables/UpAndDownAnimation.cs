@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class UpAndDownAnimation : MonoBehaviour
@@ -7,6 +5,7 @@ public class UpAndDownAnimation : MonoBehaviour
     [SerializeField] private float upAndDownSpeed;
     [SerializeField] private float downPosition;
     [SerializeField] private float upPosition;
+
     private bool goingUp;
 
     private void Awake()

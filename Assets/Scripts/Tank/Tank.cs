@@ -1,137 +1,163 @@
+using Cinemachine;
 using System;
+using Unity.Netcode;
 using UnityEngine;
 
-public class Tank : MonoBehaviour, IShootable, IDamageReceiver, IPowerUpReceiver
+public class Tank : NetworkBehaviour, IDamageReceiver, IPowerUpReceiver
 {
-    [SerializeField] private float defaultMoveSpeed;
-    [SerializeField] private float rotateSpeed;
-    [SerializeField] private Transform turret;
-    [SerializeField] private GameObject shellPrefab;
-    [SerializeField] private Transform cannonEnd;
+
     [SerializeField] private GameObject tankNormal;
     [SerializeField] private GameObject tankDestroyed;
 
+    private GameManager gameManager;
     private InputManager inputManager;
-    private float moveSpeed;
-    private int currentAmmunition;
-    private int shieldAmount;
-    private Rigidbody rigidBody;
+    private bool destroyed;
+    private NetworkVariable<int> shieldAmount = new NetworkVariable<int>(0);
 
-    private const int MAX_AMMUNITION_AMOUNT = 15;
     private const int MAX_SHIELD_AMOUNT = 1;
-
+    
     public event EventHandler OnTankDestroyed;
+    public event EventHandler<OnSpeedChangedArgs> OnSpeedChanged;
+    public class OnSpeedChangedArgs : EventArgs
+    {
+        public float speedIncreasePercentage;
+        public float activeTime;
+        public OnSpeedChangedArgs(float speedIncreasePercentage, float activeTime)
+        {
+            this.speedIncreasePercentage = speedIncreasePercentage;
+            this.activeTime = activeTime;
+        }
+    }
+    public event EventHandler<OnAmmoAddedArgs> OnAmmoAdded;
+    public class OnAmmoAddedArgs : EventArgs
+    {
+        public int ammoAmount;
+        public OnAmmoAddedArgs(int ammoAmount)
+        {
+            this.ammoAmount = ammoAmount;
+        }
+    }
 
     private void Awake()
     {
-        rigidBody = GetComponent<Rigidbody>();
-
-        moveSpeed = defaultMoveSpeed;
-        currentAmmunition = 10;
-        shieldAmount = 0;
+        ResetStats();
     }
 
     private void Start()
     {
+        gameManager = GameManager.Instance;
         inputManager = InputManager.Instance;
-        UIManager.Instance.UpdateAmmoUI(currentAmmunition);
+        inputManager.EnableControls();
 
-        inputManager.OnCannonShot += InputManager_OnCannonShot;
-    }
-
-    private void OnDisable()
-    {
-        inputManager.OnCannonShot -= InputManager_OnCannonShot;
-    }
-
-    private void FixedUpdate()
-    {
-        GetTankMovement();
-        GetTankRotation();
-        TurnTurret();
-    }
-
-    private void InputManager_OnCannonShot(object sender, EventArgs e)
-    {
-        if (GameManager.Instance.CurrentGameState == GameManager.GameState.OnGoing)
+        if (gameManager.IsMultiplayer)
         {
-            if (currentAmmunition > 0)
+            transform.position = gameManager.GetRandomSpawnPoint();
+        }
+
+        if (IsLocalPlayer)
+        {
+            SetupCinemachine();
+        }
+
+        gameManager.OnIntervalEnded += GameManager_OnIntervalEnded;
+    }
+
+    private void SetupCinemachine()
+    {
+        CinemachineVirtualCamera virtualCamera = GameObject.Find("CMCam").GetComponent<CinemachineVirtualCamera>();
+        virtualCamera.LookAt = transform;
+        virtualCamera.Follow = transform;
+    }
+
+    private void ResetStats()
+    {
+        destroyed = false;
+        shieldAmount.Value = 0;
+    }
+
+    private void ResetVisuals()
+    {
+        tankNormal.SetActive(true);
+        tankDestroyed.SetActive(false);
+    }
+
+    private void ResetPosition()
+    {
+        transform.position = gameManager.GetRandomSpawnPoint();
+    }
+
+    public void TakeDamage(bool isFromHost)
+    {
+        if(!destroyed)
+        {
+            if (shieldAmount.Value == 0)
             {
-                Shoot();
-                currentAmmunition--;
-                UIManager.Instance.UpdateAmmoUI(currentAmmunition);
+                destroyed = true;
+                PointScoredServerRpc(isFromHost);
+            }
+            else
+            {
+                shieldAmount.Value--;
             }
         }
     }
 
-    public void Shoot()
+    public new bool IsServer()
     {
-        Instantiate(shellPrefab, cannonEnd.position, turret.rotation);
-    }
-
-    private void GetTankMovement()
-    {
-        Vector3 moveAmount = transform.forward * inputManager.GetMovementDirection();
-        rigidBody.velocity = moveAmount * Time.deltaTime * moveSpeed;
-    }
-
-    private void GetTankRotation()
-    {
-        float rotation = inputManager.GetTankRotationDirection();
-        rigidBody.MoveRotation(Quaternion.Euler(transform.rotation.eulerAngles + transform.up * rotation * Time.deltaTime * rotateSpeed));
-    }
-
-    private void TurnTurret()
-    {
-        turret.LookAt(inputManager.GetMouseWorldPosition());
-        turret.eulerAngles = new Vector3(0, turret.eulerAngles.y, 0);
-    }
-
-    public void TakeDamage()
-    {
-        if(shieldAmount == 0)
-        {
-            inputManager.DisableControls();
-
-            SwitchVisuals();
-        }
-        else
-        {
-            shieldAmount--;
-        }
-    }
-
-    private void SwitchVisuals()
-    {
-        tankNormal.SetActive(false);
-        tankDestroyed.SetActive(true);
-
-        OnTankDestroyed.Invoke(this, EventArgs.Empty);
+        return base.IsServer;
     }
 
     public void AddAmmo(int ammoAmount)
     {
-        currentAmmunition += ammoAmount;
-        currentAmmunition = Mathf.Clamp(currentAmmunition, 0, MAX_AMMUNITION_AMOUNT);
-        UIManager.Instance.UpdateAmmoUI(currentAmmunition);
+        if (IsLocalPlayer)
+        {
+            OnAmmoAdded?.Invoke(this, new OnAmmoAddedArgs(ammoAmount));
+        }
     }
 
     public void IncreaseSpeed(float speedIncreasePercentage, float activeTime)
     {
-        ResetSpeed();
-        moveSpeed *= (1 + speedIncreasePercentage);
-        Invoke(nameof(ResetSpeed), 10);
-    }
-
-    private void ResetSpeed()
-    {
-        CancelInvoke(nameof(ResetSpeed));
-        moveSpeed = defaultMoveSpeed;
+        OnSpeedChanged?.Invoke(this, new OnSpeedChangedArgs(speedIncreasePercentage, activeTime));
     }
 
     public void AddShield()
     {
-        shieldAmount += 1;
-        shieldAmount = Mathf.Clamp(shieldAmount, 0, MAX_SHIELD_AMOUNT);
+        shieldAmount.Value++;
+        shieldAmount.Value = Mathf.Clamp(shieldAmount.Value, 0, MAX_SHIELD_AMOUNT);
     }
+
+    private void GameManager_OnIntervalEnded(object sender, EventArgs e)
+    {
+        ResetStats();
+        ResetVisuals();
+        ResetPosition();
+
+        inputManager.EnableControls();
+    }
+
+    #region RpcCalls
+
+    [ServerRpc(RequireOwnership = false)]
+    private void PointScoredServerRpc(bool isFromHost)
+    {
+        PointScoredClientRpc(isFromHost);
+        ShowDestroyedTankClientRpc();
+    }
+
+    [ClientRpc]
+    private void PointScoredClientRpc(bool isFromHost)
+    {
+        ScoreManagerMultiplayer.Instance.PointScored(isFromHost);
+    }
+
+    [ClientRpc]
+    private void ShowDestroyedTankClientRpc()
+    {
+        inputManager.DisableTankControls();
+        tankNormal.SetActive(false);
+        tankDestroyed.SetActive(true);
+        OnTankDestroyed.Invoke(this, EventArgs.Empty);
+    }
+
+    #endregion
 }

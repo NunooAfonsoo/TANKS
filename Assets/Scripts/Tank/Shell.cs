@@ -1,51 +1,68 @@
-using System;
-using Unity.VisualScripting;
+using Unity.Netcode;
 using UnityEngine;
 
-public class Shell : MonoBehaviour, IDamageReceiver, IDamageGiver
+public class Shell : NetworkBehaviour, IDamageReceiver, IDamageGiver
 {
     [SerializeField] private ParticleSystem explosionPrefab;
     [SerializeField] private float moveSpeed;
 
+    private bool isShooterTheHost;
     private ParticleSystem explosion;
+
+    private const float AUTO_DESTROY_TIME = 5;
 
     private void Awake()
     {
-        explosion = Instantiate(explosionPrefab).GetComponent<ParticleSystem>();
-        explosion.gameObject.SetActive(false);
-
-        Invoke(nameof(TakeDamage), 10);
+        Invoke(nameof(TakeDamage), AUTO_DESTROY_TIME);
     }
 
     private void FixedUpdate()
     {
         transform.position += transform.forward * moveSpeed * Time.deltaTime;
     }
+    private void OnCollisionEnter(Collision collision)
+    {
+        GiveDamage(collision.gameObject.GetComponent<IDamageReceiver>(), collision.contacts[0].point);
+    }
 
-    public void TakeDamage()
+    public void TakeDamage(bool isFromHost)
     {
         Destroy(gameObject);
     }
 
-    public void GiveDamage(IDamageReceiver other)
+    public new bool IsServer()
     {
-        // Spawn Particle
-        other?.TakeDamage();
-
-        PlayParticle();
-        
-        Destroy(gameObject);
+        return false;
     }
 
-    private void PlayParticle()
+    public void GiveDamage(IDamageReceiver other, Vector3 impactPosition)
     {
-        explosion.transform.position = transform.position;
-        explosion.gameObject.SetActive(true);
+        other?.TakeDamage(isShooterTheHost);
+
+        PlayParticleClientRPC(impactPosition);
+
+        DestroySpawnedObjectServerRPC();
+    }
+
+    public void SetIsShooterHost(bool isHost)
+    {
+        isShooterTheHost = isHost;
+    }
+
+    #region RpcCalls
+
+    [ClientRpc]
+    private void PlayParticleClientRPC(Vector3 impactPosition)
+    {
+        explosion = Instantiate(explosionPrefab, impactPosition, Quaternion.identity).GetComponent<ParticleSystem>();
         explosion.Play();
     }
 
-    private void OnTriggerEnter(Collider other)
+    [ServerRpc(RequireOwnership = false)]
+    private void DestroySpawnedObjectServerRPC()
     {
-        GiveDamage(other.GetComponent<IDamageReceiver>());
+        Destroy(gameObject);
     }
+
+    #endregion
 }
